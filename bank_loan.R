@@ -48,6 +48,15 @@ bank$Personal_Loan <- factor(bank$Personal_Loan, levels = c(0, 1))
 table(bank$Personal_Loan)
 prop.table(table(bank$Personal_Loan))      # ~9.6% acceptance, very imbalanced
 
+# treat the obvious categoricals as factors so LR doesn't assume linear spacing
+bank$Education          <- factor(bank$Education, levels = c(1, 2, 3),
+                                  labels = c("Undergrad","Graduate","Advanced"))
+bank$Family             <- factor(bank$Family, levels = c(1, 2, 3, 4))
+bank$Securities_Account <- factor(bank$Securities_Account, levels = c(0, 1))
+bank$CD_Account         <- factor(bank$CD_Account, levels = c(0, 1))
+bank$Online             <- factor(bank$Online, levels = c(0, 1))
+bank$CreditCard         <- factor(bank$CreditCard, levels = c(0, 1))
+
 # class distribution
 ggplot(bank, aes(Personal_Loan, fill = Personal_Loan)) +
   geom_bar() +
@@ -66,9 +75,8 @@ ggplot(bank, aes(Income, CCAvg, color = Personal_Loan)) +
   theme_minimal()
 
 # Income by Education, split by acceptance
-ggplot(bank, aes(factor(Education), Income, fill = Personal_Loan)) +
+ggplot(bank, aes(Education, Income, fill = Personal_Loan)) +
   geom_boxplot() +
-  scale_x_discrete(labels = c("Undergrad","Graduate","Advanced")) +
   scale_fill_brewer(palette = "Set2") +
   labs(title = "Income by Education and Loan Acceptance",
        x = "Education", y = "Income ($K)", fill = "Personal Loan") +
@@ -138,20 +146,16 @@ train_ann <- ovun.sample(Personal_Loan ~ ., data = train_sel,
                          method = "over", seed = 123)$data
 table(train_ann$Personal_Loan)
 
-num_vars  <- setdiff(names(train_ann), "Personal_Loan")
-train_mat <- scale(train_ann[, num_vars], center = TRUE, scale = TRUE)
-train_scaled <- train_ann
-train_scaled[, num_vars] <- train_mat
+# factors -> 0/1 dummy columns so nnet has a numeric matrix to chew on
+x_train_raw <- model.matrix(Personal_Loan ~ . - 1, data = train_ann)
+x_test_raw  <- model.matrix(Personal_Loan ~ . - 1, data = test_sel)
 
-mu       <- attr(train_mat, "scaled:center")
-sd_train <- attr(train_mat, "scaled:scale")
+mu       <- colMeans(x_train_raw)
+sd_train <- apply(x_train_raw, 2, sd)
+x_train  <- scale(x_train_raw, center = mu, scale = sd_train)
+x_test   <- scale(x_test_raw,  center = mu, scale = sd_train)
 
-test_scaled <- test_sel
-test_scaled[, num_vars] <- scale(test_sel[, num_vars], center = mu, scale = sd_train)
-
-x_train <- subset(train_scaled, select = -Personal_Loan)
-y_train <- as.numeric(train_scaled$Personal_Loan) - 1   # factor "0"/"1" -> 0/1
-x_test  <- subset(test_scaled,  select = -Personal_Loan)
+y_train <- as.numeric(train_ann$Personal_Loan) - 1   # factor "0"/"1" -> 0/1
 
 ann_mod <- nnet(x = x_train, y = y_train,
                 size = 5, decay = 0.001, maxit = 1000,
