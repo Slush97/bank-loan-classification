@@ -29,7 +29,7 @@ str(bank)
 head(bank)
 summary(bank)
 
-# distributions of the four most variable continuous features
+# distributions of the four continuous features that drive the modelling
 h1 <- ggplot(bank, aes(Income))   + geom_histogram(bins = 30) + labs(title = "Income",   x = "$K")       + theme_minimal()
 h2 <- ggplot(bank, aes(CCAvg))    + geom_histogram(bins = 30) + labs(title = "CCAvg",    x = "$K/month") + theme_minimal()
 h3 <- ggplot(bank, aes(Age))      + geom_histogram(bins = 30) + labs(title = "Age",      x = "years")    + theme_minimal()
