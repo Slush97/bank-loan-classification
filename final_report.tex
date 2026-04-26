@@ -1,0 +1,652 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{ragged2e}
+\usepackage{parskip}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+\justifying
+
+\hypersetup{colorlinks=true, linkcolor=blue!50!black,
+            citecolor=blue!50!black, urlcolor=blue!50!black}
+\renewcommand{\figureautorefname}{Figure}
+\renewcommand{\subfigureautorefname}{Figure}
+
+% Figure / table captions: small italic body with bold label so they are
+% visually distinct from normal body text.
+\captionsetup{font={small,it}, labelfont={small,bf}, labelsep=period,
+              skip=4pt}
+
+% Minimal palette
+\definecolor{gblue}{RGB}{138,180,248}
+\definecolor{gbluelt}{RGB}{210,227,252}
+\definecolor{gredlt}{RGB}{252,221,219}
+\definecolor{ggrey}{RGB}{95,99,104}
+\definecolor{gdarkgrey}{RGB}{32,33,36}
+
+\setlength{\textfloatsep}{10pt plus 2pt minus 2pt}
+\setlength{\intextsep}{10pt plus 2pt minus 2pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Universal Bank Personal Loan Classification}
+\fancyhead[R]{\small Page \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
+
+\definecolor{codegray}{gray}{0.95}
+\definecolor{codekw}{RGB}{30,60,160}
+\definecolor{codecom}{RGB}{0,120,0}
+\definecolor{codestr}{RGB}{160,40,40}
+\lstdefinelanguage{Rlang}{
+  keywords={library, set.seed, read.csv, factor, prop.table, sort, names,
+            glm, rpart, prune, predict, confusionMatrix, rbind, round,
+            mean, sapply, setdiff, gsub, ifelse, function, for, in, while,
+            TRUE, FALSE, NULL, c, ggplot, aes, geom_bar, geom_text,
+            geom_histogram, geom_point, geom_boxplot, ggsave,
+            rpart.plot, as.formula, as.numeric, as.character, head,
+            paste, sprintf, print, cat, nnet, plotnet, ovun.sample,
+            scale, model.matrix, colMeans, apply, sample, table, step,
+            terms, attr, source, summary, str},
+  keywordstyle=\color{codekw}\bfseries,
+  comment=[l]{\#},
+  commentstyle=\color{codecom}\itshape,
+  string=[b]",
+  stringstyle=\color{codestr},
+  sensitive=true,
+  morestring=[b]',
+}
+\lstset{
+  language=Rlang,
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\footnotesize,
+  frame=single,
+  rulecolor=\color{gray!50},
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  xleftmargin=14pt,
+  captionpos=b,
+}
+
+% Figures live in ../OM 484 Materials/r_figures/ (or in ./r_figures/ if copied locally).
+% \graphicspath handles directories with spaces correctly when each path is wrapped in its own braces.
+\graphicspath{{../OM 484 Materials/r_figures/}{r_figures/}{./}}
+\newcommand{\figpath}[1]{#1}
+
+\title{Universal Bank Personal Loan Classification\\[0.3em]
+       \large OM 484 Final Project Report}
+\author{Kendra Kershaw \and Jacob Hutchinson \and Eliott Humes \and Stephanie Linares}
+\date{April 2026}
+
+\begin{document}
+
+% ===== Cover page =====
+\begin{titlepage}
+\thispagestyle{empty}
+
+\vspace*{3.5in}
+
+\noindent
+{\fontsize{30}{36}\selectfont\color{gdarkgrey}\textsf{Universal Bank Personal Loan Classification}}
+
+\vspace{0.4in}
+
+\noindent
+\begin{tikzpicture}
+  \fill[gblue] (0,0) rectangle (1.5in,0.03in);
+\end{tikzpicture}
+
+\vspace{0.4in}
+
+\noindent
+{\fontsize{13}{16}\selectfont\color{ggrey}\textsf{OM 484 Final Project Report}}
+
+\vfill
+
+\noindent
+{\color{gdarkgrey}\textsf{Kendra Kershaw \quad Jacob Hutchinson \quad Eliott Humes \quad Stephanie Linares}}\\[0.15in]
+{\color{ggrey}\textsf{April 2026}}
+
+\end{titlepage}
+
+% ===== Table of contents =====
+\thispagestyle{empty}
+\begingroup
+  \renewcommand{\contentsname}{\textsf{\textbf{\color{gdarkgrey}Contents}}}
+  \tableofcontents
+\endgroup
+\clearpage
+
+\setcounter{page}{1}
+\thispagestyle{fancy}
+
+\section*{Executive Summary}
+\addcontentsline{toc}{section}{Executive Summary}
+
+Universal Bank's last personal loan campaign reached every customer in the
+sample and converted only 9.6 percent of them. Most contacts produced
+nothing, which is wasteful when contact cost is the same regardless of the
+outcome. Our project asks a simpler question: can the bank predict, in
+advance, which customers are likely to accept a personal loan offer?
+
+We worked with a 5{,}000 customer dataset that includes age, income, family
+size, education, credit card spending, and several account flags. After
+cleaning the file and dropping two columns that carried no information
+(customer ID and ZIP code), we split the data 70 / 30 into training and test
+sets. Forward stepwise selection on a logistic regression chose nine of
+the eleven candidate features. We then trained three models on those
+features: logistic regression, a pruned classification tree, and a single
+hidden layer neural network.
+
+On the 1{,}500 test customers the decision tree performed best, with 98.5
+percent accuracy, 92.9 percent precision on the positive class, and 91.0
+percent recall. The neural network came second with the highest recall of
+the three (93.8 percent) but more false positives. Logistic regression
+trailed both, missing roughly a quarter of real acceptors, which is the
+behavior we expected from a linear model on a dataset where the boundary
+between acceptors and decliners is shaped by interactions among income,
+education, and family size.
+
+The practical reading is that a campaign guided by the decision tree would
+contact roughly 9 percent of the customer base and still capture more than
+nine out of every ten genuine acceptors. The tree also offers something the
+neural network cannot: rules a marketing team can read and audit. The two
+strongest segments are higher income customers with a graduate degree, and
+higher income undergraduates with larger families.
+
+We recommend deploying the rule-based ranking model as the primary
+scoring engine for personal loan campaigns. Its segmentation rules read
+directly so marketing can audit and explain who is being contacted and
+why. Under representative cost assumptions, the model converts a customer
+for roughly a tenth of the per-acceptor marketing spend of a blanket
+campaign, freeing both budget and contact capacity for other use. The
+contact threshold should be tuned to the bank's actual per-contact cost,
+and the model should be retrained after each campaign cycle as customer
+behaviour shifts.
+
+\newpage
+
+\section{Problem Statement}
+
+Universal Bank earns most of its revenue from depositors but a personal
+loan customer is more profitable per relationship. The bank has run blanket
+loan campaigns that contact every customer in the book. The conversion rate
+on the most recent campaign was 9.6 percent. That number is reasonable for
+an untargeted offer but it implies that nine out of every ten contacts did
+not convert. Contact cost is fixed, so the dominant effect of a blanket
+campaign is wasted spend.
+
+The analytical task is binary classification. Given a customer's banking
+profile and demographics, the model should output whether that customer is
+likely to accept a personal loan. A useful model would let the bank focus
+outreach on a smaller, higher quality set of prospects, which raises the
+hit rate per contact without raising marketing budget.
+
+The class imbalance in the data shapes how we evaluated the models.
+\autoref{fig:class_dist} shows that 480 of 5{,}000 customers (9.6
+percent) accepted the previous offer. A model that always predicts ``no''
+already scores 90.4 percent accuracy on this dataset, so accuracy by itself
+is not a useful target. We focus on precision and recall on the positive
+(accepted) class, and on F1 as a single combined number.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.55\textwidth]{\figpath{class_dist}}
+\caption{Class distribution. The positive class is rare, which means
+         accuracy alone is misleading.}
+\label{fig:class_dist}
+\end{figure}
+
+\section{Data Source}
+
+The dataset is the Universal Bank retail banking sample provided in
+\texttt{UniversalBank.csv}. It contains 5{,}000 customer records and 14
+columns, including the binary target \texttt{Personal Loan} (1 if the
+customer accepted the offer, 0 otherwise). Table~\ref{tab:features} lists
+each variable and how we treat it.
+
+\begin{table}[!htbp]
+\centering
+\caption{Dataset variables.}
+\label{tab:features}
+\begin{tabular}{@{} l l p{8.0cm} @{}}
+\toprule
+Variable & Type & Description \\
+\midrule
+ID                 & Identifier  & Row counter, dropped before modelling \\
+Age                & Continuous  & Customer age in years \\
+Experience         & Continuous  & Years of professional work experience \\
+Income             & Continuous  & Annual income in thousands of dollars \\
+ZIP Code           & Categorical & Five digit postal code, dropped \\
+Family             & Ordinal     & Family size from 1 to 4 \\
+CCAvg              & Continuous  & Monthly credit card spend (in thousands) \\
+Education          & Ordinal     & 1 = Undergrad, 2 = Graduate, 3 = Advanced \\
+Mortgage           & Continuous  & Mortgage value in thousands \\
+Securities Account & Binary      & Has a securities account \\
+CD Account         & Binary      & Has a certificate of deposit account \\
+Online             & Binary      & Uses online banking \\
+CreditCard         & Binary      & Has a Universal Bank credit card \\
+\midrule
+Personal Loan      & Binary      & Target: customer accepted the offer \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The file has no missing values in any column. The mix of continuous,
+ordinal, and binary variables fits both linear and tree based classifiers
+without much extra work.
+
+\section{Data Investigation}
+
+We started by looking at the distributions of the four continuous features
+that drive most of the modelling decisions (\autoref{fig:histograms}).
+Income and CCAvg are right skewed with long upper tails. Age is close to
+uniform between 23 and 67. Mortgage is strongly zero inflated because more
+than half of customers report no mortgage. The skew in Income and CCAvg is
+not a data quality issue; it reflects the actual wealth distribution of
+the customer base. Tree based models handle skewed inputs natively, so we
+did not transform these columns.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{\figpath{histograms}}
+\caption{Distributions of Income, CCAvg, Age, and Mortgage.}
+\label{fig:histograms}
+\end{figure}
+
+Table~\ref{tab:stats} reports summary statistics after cleaning. Two
+patterns are worth flagging. First, Age and Experience track each other
+almost exactly (Experience is roughly Age minus 25), which means only one
+of them carries unique information. Second, the spread on Mortgage is huge
+relative to its median because the median is zero.
+
+\begin{table}[!htbp]
+\centering
+\caption{Summary statistics for the continuous variables.}
+\label{tab:stats}
+\begin{tabular}{@{} l r r r r r r @{}}
+\toprule
+Feature    & Mean & Std   & Min & Q1 & Median & Max \\
+\midrule
+Age        & 45.3 &  11.5 &  23 &  35 &  45 &  67 \\
+Experience & 20.1 &  11.4 &   0 &  10 &  20 &  43 \\
+Income     & 73.8 &  46.0 &   8 &  39 &  64 & 224 \\
+CCAvg      &  1.9 &   1.7 &   0 & 0.7 & 1.5 &  10 \\
+Mortgage   & 56.5 & 101.7 &   0 &   0 &   0 & 635 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+To see how the strongest predictors separate the two classes, we plotted
+Income against monthly credit card spend (\autoref{fig:scatter}) and
+Income against Education level split by acceptance
+(\autoref{fig:box}). In both views the acceptors cluster heavily at the
+high income end. Education matters as well: at any fixed income level, a
+customer with a graduate or advanced degree is more likely to accept than a
+customer with an undergraduate degree.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{\figpath{scatter_income_ccavg}}
+  \caption{Income vs.\ monthly credit card spend, coloured by loan
+           acceptance.}
+  \label{fig:scatter}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{\figpath{box_income_edu}}
+  \caption{Income by education level, split by loan acceptance.}
+  \label{fig:box}
+\end{subfigure}
+\caption{Income separates acceptors from decliners at high values, with
+         Education adding a second axis of separation.}
+\label{fig:income_views}
+\end{figure}
+
+\section{Data Cleansing}
+
+The cleaning steps in \texttt{bank\_loan.R} (lines 41 to 58) are:
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+    \item Drop \texttt{ID}. It is just a row counter and carries no
+          predictive information.
+    \item Drop \texttt{ZIP Code}. There are too many distinct values
+          (around 467) to use it as a categorical without first grouping
+          codes into geographic clusters, which is out of scope here.
+    \item Replace spaces in column names with underscores so R formulas
+          parse cleanly.
+    \item Clip negative \texttt{Experience} values (52 rows) to zero.
+          Negative years of experience is impossible; this is a data entry
+          artifact.
+    \item Confirm there are no missing values across the remaining columns
+          (\texttt{sum(is.na(bank))} returns 0), so no imputation is
+          needed.
+    \item Convert \texttt{Personal\_Loan}, \texttt{Education},
+          \texttt{Family}, and the four binary account flags to factors.
+          Treating \texttt{Education} as a factor matters: as an integer
+          R would assume the gap from Undergrad to Graduate is the same
+          ``size'' as the gap from Graduate to Advanced, which the
+          logistic model would interpret literally.
+\end{enumerate}
+
+For the neural network we also standardize the design matrix to zero mean
+and unit variance, fitting the scaler on the training set and reusing the
+same numbers on the test set. Fitting the scaler on the full dataset would
+leak test set statistics into training. The decision tree uses the raw
+values because it is invariant to monotonic rescaling.
+
+To address the 9.6 percent class imbalance for the neural network, we used
+random oversampling on the training set only with the
+\texttt{ROSE::ovun.sample} function. The test set was left at its natural
+class proportions so the test metrics reflect real population performance.
+Logistic regression and the decision tree were trained on the unbalanced
+data because both methods handle imbalance reasonably well at default
+settings.
+
+\section{Feature Selection}
+
+We used forward stepwise selection on a logistic regression to choose
+features (\texttt{bank\_loan.R}, lines 96 to 108). The procedure starts
+from a model that contains only an intercept and adds, at each step, the
+feature that most reduces the Akaike Information Criterion (AIC). It stops
+when no remaining feature lowers AIC any further. The benefit of this
+approach is that it picks features based on how much they actually
+contribute to model fit, while penalizing complexity through AIC.
+
+The procedure selected nine of the eleven candidate features:
+
+\begin{itemize}[itemsep=2pt]
+    \item Income
+    \item Education
+    \item Family
+    \item CD\_Account
+    \item CreditCard
+    \item CCAvg
+    \item Online
+    \item Securities\_Account
+    \item Mortgage
+\end{itemize}
+
+The two features that were not selected are Age and Experience. Dropping
+both makes sense given the near perfect correlation between them that we
+noted earlier; once Income was already in the model neither contributed
+enough additional signal to lower AIC further. Mortgage was retained, but
+its coefficient is small ($p = 0.11$); it sits at the borderline of the
+selection criterion and contributes less than the other eight features.
+
+We used the same nine feature set across all three models so that
+performance differences reflect the model itself, not differences in input
+information.
+
+\section{Model Development and Evaluation}
+\label{sec:models}
+
+\subsection{Setup}
+
+The cleaned 5{,}000 row dataset was split 70 / 30 into training (3{,}500
+rows) and test (1{,}500 rows) using \texttt{caret::createDataPartition},
+which performs a stratified split on \texttt{Personal\_Loan} so the 9.6
+percent acceptance rate is preserved exactly in both folds. With this much
+class imbalance a plain random split could shift the test acceptor count
+by several points run-to-run, which would propagate directly into the
+recall metric; stratification removes that source of variance.
+\texttt{set.seed(123)} is used for reproducibility, and the test set is
+used only for final scoring and is not seen by any model during fitting or
+feature selection.
+
+We trained three models on the nine selected features:
+
+\begin{itemize}[itemsep=4pt]
+    \item \textbf{Logistic regression} (\texttt{glm}, binomial family,
+          inherited from the stepwise procedure).
+    \item \textbf{Decision tree} (\texttt{rpart}, grown deep with
+          \texttt{minsplit = 20} and \texttt{cp = 0.001}, then pruned at
+          the complexity parameter that minimizes the cross validated
+          error column \texttt{xerror}).
+    \item \textbf{Neural network} (\texttt{nnet} with one hidden layer of
+          5 nodes, weight decay 0.001, up to 1{,}000 epochs), trained on
+          the oversampled and standardized training set.
+\end{itemize}
+
+For each model we report accuracy, precision (positive class), recall
+(positive class), and F1 from \texttt{caret::confusionMatrix} at a
+classification threshold of 0.5.
+
+\subsection{Test Set Performance}
+
+Table~\ref{tab:results} summarizes the four metrics for each model on the
+1{,}500 row test set, and \autoref{fig:confusion} shows the underlying
+confusion matrices.
+
+\begin{table}[!htbp]
+\centering
+\caption{Test set performance (n = 1{,}500, 144 acceptors).}
+\label{tab:results}
+\begin{tabular}{@{} l r r r r @{}}
+\toprule
+Model               & Accuracy & Precision & Recall & F1 \\
+\midrule
+Logistic Regression & 0.9640   & 0.8462    & 0.7639 & 0.8029 \\
+Decision Tree       & 0.9847   & 0.9291    & 0.9097 & 0.9193 \\
+Neural Network      & 0.9727   & 0.8084    & 0.9375 & 0.8682 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{\figpath{confusion_matrices}}
+\caption{Test-set confusion matrices. Rows: predicted class. Columns:
+         actual class. Blue cells are correct predictions; pink cells are
+         errors.}
+\label{fig:confusion}
+\end{figure}
+
+The decision tree comes out ahead on accuracy, precision, and F1. The
+neural network has the highest recall (0.938, catching 135 of 144
+acceptors) but produces noticeably more false positives (32 versus 10),
+which drags its precision down to 0.81. Logistic regression sits between
+the two on precision but has the weakest recall (0.764, missing roughly a
+quarter of the actual acceptors). With this much class imbalance the
+recall figure is the most consequential, because every missed acceptor is
+a customer the bank should have contacted; the decision tree's combination
+of high recall and high precision is what makes it the front-runner.
+
+\subsection{Why Logistic Regression Underperforms}
+
+The data investigation suggested that acceptance depends on interactions
+between income, education, and family size, not on any single linear
+combination of those features. A logistic regression assumes the log odds
+of acceptance is a weighted sum of the inputs, which cannot represent ``a
+high income customer is much more likely to accept if they also have a
+graduate degree'' as a single coefficient. The decision tree captures that
+kind of multiplicative structure naturally because each split conditions
+on the splits above it. The neural network can also represent
+interactions, but with only one hidden layer of five nodes and an
+oversampled training set, it ends up trading some precision for recall
+relative to the tree.
+
+\subsection{Decision Tree Structure}
+
+Because the pruned tree is small enough to read directly, we include it as
+\autoref{fig:tree}. Each leaf shows the proportion of training
+customers that landed there and the predicted class. Two leaves account
+for most of the predicted acceptors:
+
+\begin{itemize}[itemsep=2pt]
+    \item Customers with Income at or above roughly \$115K and Education
+          at Graduate or Advanced level: high acceptance probability.
+    \item Customers with Income at or above roughly \$115K, an
+          Undergraduate degree, and a Family size of three or more:
+          high acceptance probability.
+\end{itemize}
+
+A smaller third leaf flags mid income customers (Income roughly \$93--107K)
+with a graduate or advanced degree and elevated monthly credit card spend
+(CCAvg at or above roughly \$3K/month).
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{\figpath{tree}}
+\caption{Pruned decision tree. Each leaf shows the predicted class, the
+         predicted probability, and the percentage of training customers
+         that fall into the leaf.}
+\label{fig:tree}
+\end{figure}
+
+\subsection{Neural Network Structure}
+
+The neural network has the architecture shown in
+\autoref{fig:ann}. The input layer holds one node per dummy column
+produced by \texttt{model.matrix} on the nine selected features (so each
+factor level becomes its own input). After dummy encoding of Education
+(three levels) and Family (four levels), this expands to 13 input nodes.
+The hidden layer has five sigmoid nodes, and the output is a single node
+giving the predicted probability of acceptance, for a 13-5-1 architecture
+with 76 weights including biases.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{\figpath{ann_architecture}}
+\caption{Neural network architecture. Blue lines are positive weights, red
+         lines are negative; line thickness is proportional to weight
+         magnitude.}
+\label{fig:ann}
+\end{figure}
+
+\section{Practical Implications}
+\label{sec:practical}
+
+The model output is a probability between 0 and 1, not a hard label. The
+bank gets to choose where to set the threshold, and that choice is a
+business decision rather than a statistical one. With the decision tree at
+threshold 0.5, the bank would contact roughly 9 percent of the customer
+base (141 customers out of 1{,}500 in our test slice) and capture 131 of
+the 144 genuine acceptors. That is a 91 percent capture rate on fewer
+than a tenth of the contacts, compared with a blanket campaign that
+contacts 100 percent of the base to reach the same group.
+
+For the marketing team the tree rules are easier to act on than either
+the logistic regression coefficients or the neural network weights. The
+two primary segments are:
+
+\begin{enumerate}[itemsep=2pt]
+    \item Customers with Income at or above \$115K and a graduate or
+          advanced degree.
+    \item Customers with Income at or above \$115K, an undergraduate
+          degree, and a family of three or more.
+\end{enumerate}
+
+A third segment captures mid income customers with a graduate or advanced
+degree and above average credit card spend. All nine inputs the model uses are
+fields the bank already collects, so deployment does not require any new
+data pipelines. Scoring can be computed in batch before each campaign or
+applied on the fly when a customer interacts with a channel.
+
+\subsection{Cost-Benefit at Scale}
+
+To put the model in dollar terms, we ran an illustrative cost-benefit
+exercise on the full 5{,}000 customer base. We assume a per-contact cost
+of \$10 (a representative cost for an outbound call campaign) and a net
+profit of \$2{,}000 per converted personal loan over the loan's lifetime.
+Both numbers are illustrative and would be replaced with the bank's
+actual figures in deployment, but they are the right order of magnitude.
+
+\begin{table}[H]
+\centering
+\caption{Illustrative cost-benefit comparison at the 0.5 threshold.}
+\label{tab:cost_benefit}
+\begin{tabular}{@{} l r r @{}}
+\toprule
+                              & Blanket campaign & Targeted (DT) \\
+\midrule
+Contacts                      & 5{,}000          & $\sim$470     \\
+Contact cost                  & \$50{,}000       & \$4{,}700     \\
+Acceptors reached             & 480              & $\sim$437     \\
+Revenue (at \$2{,}000 each)   & \$960{,}000      & \$874{,}000   \\
+Net profit                    & \$910{,}000      & \$869{,}300   \\
+Cost per acceptor             & \$104            & \$10.75       \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two campaigns end up within 4.5 percent of each other on net profit,
+because the targeted campaign misses roughly 43 acceptors at this
+threshold. The real win is on the \emph{cost per acceptor} line: the
+targeted campaign converts a customer for one tenth of the marketing
+spend. That is what frees capacity. The 4{,}530 contacts the bank does
+not make can be redirected to other product offers, used to follow up
+with high probability prospects more aggressively, or simply not made,
+which reduces customer offer fatigue.
+
+If contact cost rises (say, a \$25 in-branch interaction instead of a
+\$10 call) or the loan margin shrinks, the cost ratio shifts. The 0.5
+threshold is a default rather than a constraint: lowering it raises
+recall at the expense of some false alarms, and raising it does the
+opposite, so marketing can tune it to whichever cost structure applies
+without retraining the model.
+
+\section{Conclusion and Recommendations}
+
+We trained three classifiers on a 5{,}000 customer sample and evaluated
+them on a held out test set of 1{,}500 customers. The pruned decision tree
+was the strongest model overall, with 98.5 percent accuracy, 92.9 percent
+precision on the positive class, and 91.0 percent recall. The neural
+network had higher recall (93.8 percent) but lower precision, and logistic
+regression underperformed because the boundary between acceptors and
+decliners is not linear in the input features.
+
+Concrete recommendations for Universal Bank:
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+    \item Use the decision tree as the primary scoring model for personal
+          loan campaigns. It performs best on the metrics that matter
+          most under class imbalance, and the rules are simple enough for
+          the marketing team to read and audit.
+    \item Keep the neural network as a secondary reference. It catches
+          slightly more acceptors when recall matters more than precision,
+          and it is a useful sanity check on the tree's output.
+    \item Target the two primary customer segments first (high income
+          customers with graduate or advanced degrees, and high income
+          undergraduates with larger families) on the next campaign.
+    \item Tune the classification threshold to the bank's actual cost
+          structure before going live, instead of using the 0.5 default.
+    \item Retrain the model after each campaign cycle, or sooner if there
+          is a notable shift in customer mix or macroeconomic conditions.
+\end{enumerate}
+
+One honest caveat is worth flagging: we did not engineer additional
+features (income to credit card spend ratios, education and family
+interactions, and so on), which a production version of this model would
+likely benefit from.
+
+\appendix
+\section{Complete R Code}
+
+The full \texttt{bank\_loan.R} script is included below for reference. It
+covers data loading, cleaning, exploratory plots, the 70 / 30 split,
+forward stepwise selection, all three model fits, and the final
+performance comparison.
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{bank_loan.R}
+
+\end{document}
