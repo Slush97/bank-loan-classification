@@ -1,4 +1,4 @@
-# bank_loan.R — Universal Bank personal loan classification
+# bank_loan.R - Universal Bank personal loan classification
 # Models: logistic regression, decision tree, ANN
 # Methodology follows Lab 6 (LR + stepwise), Lab 7 (CART), Lab 8 (ANN)
 
@@ -83,9 +83,10 @@ ggplot(bank, aes(Education, Income, fill = Personal_Loan)) +
   theme_minimal()
 
 
-# train / test split (70/30)
-n   <- nrow(bank)
-idx <- sample(1:n, size = floor(0.7 * n), replace = FALSE)
+# train / test split (70/30, stratified on Personal_Loan)
+# stratified split preserves the 9.6% acceptance rate in both folds so the
+# test acceptor count does not swing run-to-run with this much imbalance.
+idx   <- createDataPartition(bank$Personal_Loan, p = 0.7, list = FALSE)
 train <- bank[idx,  ]
 test  <- bank[-idx, ]
 table(train$Personal_Loan)
@@ -108,7 +109,7 @@ selected
 sel_formula <- as.formula(paste("Personal_Loan ~", paste(selected, collapse = " + ")))
 
 
-# logistic regression (Lab 6) — step_forw is already a glm, use it directly
+# logistic regression (Lab 6) - step_forw is already a glm, use it directly
 lr_mod <- step_forw
 
 prob_lr <- predict(lr_mod, newdata = test, type = "response")
@@ -118,7 +119,7 @@ cm_lr <- confusionMatrix(pred_lr, test$Personal_Loan, positive = "1")
 cm_lr
 
 
-# decision tree (Lab 7) — grow deep then prune at min xerror cp
+# decision tree (Lab 7) - grow deep then prune at min xerror cp
 dt_mod <- rpart(sel_formula, data = train, method = "class",
                 control = rpart.control(minsplit = 20, cp = 0.001))
 best_cp   <- dt_mod$cptable[which.min(dt_mod$cptable[,"xerror"]), "CP"]
